@@ -1,0 +1,32 @@
+﻿[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jianwei"
+version = "0.1.0"
+description = "鉴微 JianWei - AI 安全测试平台（由玄鉴引擎驱动）"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "yzdily"}
+]
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Security",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Homepage = "https://github.com/yzdily/jianwei"
+Repository = "https://github.com/yzdily/jianwei"
+"Bug Tracker" = "https://github.com/yzdily/jianwei/issues"
+
+[tool.setuptools.packages.find]
+include = ["core*", "web*"]

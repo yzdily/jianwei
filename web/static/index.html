@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>鉴微 JianWei · AI 安全测试平台</title>
+<style>
+  :root{
+    --bg:#0f1623; --side:#111b2c; --card:#fff; --ink:#1f2937; --muted:#6b7280;
+    --line:#e5e7eb; --brand:#2563eb; --brand2:#0ea5e9; --ok:#16a34a; --warn:#d97706; --bad:#dc2626;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink)}
+  .app{display:grid;grid-template-columns:230px 1fr;height:100vh}
+  /* 侧栏 §13.2 */
+  .side{background:var(--side);color:#cbd5e1;display:flex;flex-direction:column;padding:18px 12px}
+  .brand{font-size:18px;font-weight:700;color:#fff;letter-spacing:.5px;margin-bottom:2px}
+  .brand small{display:block;font-weight:400;font-size:11px;color:#64748b;letter-spacing:0}
+  .nav{margin-top:22px;display:flex;flex-direction:column;gap:4px}
+  .nav button{background:transparent;border:0;color:#cbd5e1;text-align:left;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px}
+  .nav button:hover{background:#1e293b}
+  .nav button.active{background:var(--brand);color:#fff}
+  .side .foot{margin-top:auto;font-size:11px;color:#475569}
+  .main{padding:26px 30px;overflow:auto;background:#f6f8fb}
+  .view{display:none;max-width:1080px}
+  .view.active{display:block}
+  h2{margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:20px}
+  /* 表单 §13.3 */
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+  input,select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:#fff}
+  .col{flex:1;min-width:200px}
+  .axis{display:flex;gap:10px;margin:6px 0 18px}
+  .axis .chip{flex:1;border:1px dashed var(--line);border-radius:8px;padding:10px 12px;font-size:12px}
+  .axis .chip b{display:block;font-size:13px;margin-bottom:2px}
+  .btn{background:var(--brand);color:#fff;border:0;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer}
+  .btn:hover{background:#1d4ed8}
+  .btn.ghost{background:#eef2ff;color:var(--brand)}
+  .status{margin-top:14px;font-size:13px;color:var(--muted)}
+  /* 结果表 */
+  table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:#f8fafc;color:var(--muted);font-weight:600}
+  .sev{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;color:#fff}
+  .sev.critical{background:var(--bad)} .sev.high{background:#ea580c} .sev.medium{background:var(--warn)} .sev.low{background:#0891b2} .sev.info{background:#64748b}
+  .pill{display:inline-block;padding:2px 8px;border-radius:6px;background:#eef2ff;color:var(--brand);font-size:11px;font-weight:600}
+  .links a{color:var(--brand);margin-right:14px;font-size:13px}
+  pre{background:#0f172a;color:#e2e8f0;padding:14px;border-radius:8px;overflow:auto;font-size:12px;max-height:420px}
+  .md{background:#fff;border:1px solid var(--line);border-radius:10px;padding:22px;line-height:1.6}
+  .md h1,.md h2,.md h3{line-height:1.3} .md table{border:1px solid var(--line)} .md code{background:#f1f5f9;padding:1px 5px;border-radius:4px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px}
+  .kpi b{font-size:24px;display:block} .kpi span{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">鉴微 JianWei<small>AI 安全测试平台 · 建在玄鉴之上</small></div>
+    <nav class="nav">
+      <button data-view="scan" class="active">🔍 扫描发起</button>
+      <button data-view="report">📑 报告中心</button>
+      <button data-view="bench">📊 基准评测</button>
+      <button data-view="health">💡 系统健康</button>
+    </nav>
+    <div class="foot">零侵入扩展玄鉴引擎<br/>双轴扫描 · OWASP LLM Top 10</div>
+  </aside>
+
+  <main class="main">
+    <!-- 扫描发起 §13.3 -->
+    <section class="view active" id="scan">
+      <h2>扫描发起（双轴扫描）</h2>
+      <div class="sub">MASTER_PLAN §12/§13.3 — 一次发起同时编排静态（X 轴）与动态红队（Y 轴）。</div>
+      <div class="panel">
+        <div class="row">
+          <div class="col">
+            <label>目标 URL</label>
+            <input id="url" placeholder="https://llm.example.com/v1/chat" />
+          </div>
+          <div class="col" style="max-width:200px">
+            <label>目标类型</label>
+            <select id="ttype">
+              <option value="web">web</option>
+              <option value="api">api</option>
+              <option value="llm_app" selected>llm_app</option>
+              <option value="agent">agent</option>
+              <option value="rag">rag</option>
+              <option value="skill">skill</option>
+            </select>
+          </div>
+          <div class="col" style="max-width:200px">
+            <label>测试策略</label>
+            <select id="strategy">
+              <option value="passive">passive</option>
+              <option value="standard" selected>standard</option>
+              <option value="redteam">redteam</option>
+              <option value="compliance">compliance</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" id="skillRow" style="display:none">
+          <div class="col">
+            <label>Skill 本地包路径（类型=skill 时）</label>
+            <input id="skillPath" placeholder="./my-skill/ 或 ./skill.zip" />
+          </div>
+        </div>
+        <div class="axis">
+          <div class="chip"><b>X 轴 · 静态</b>配置/源码/依赖/IaC 弱点（skill 供应链为主）</div>
+          <div class="chip"><b>Y 轴 · 动态</b>黑盒红队 · OWASP LLM Top 10 + Agent/MCP</div>
+        </div>
+        <button class="btn" id="runScan">发起扫描</button>
+        <div class="status" id="scanStatus"></div>
+      </div>
+      <div class="panel" id="scanResult" style="margin-top:18px;display:none">
+        <h3 style="margin-top:0">扫描发现（<span id="rcount">0</span>）</h3>
+        <div id="findingsTable"></div>
+      </div>
+    </section>
+
+    <!-- 报告中心 §11.5 / §13.1 -->
+    <section class="view" id="report">
+      <h2>报告中心（OWASP LLM Top 10）</h2>
+      <div class="sub">调用 L5 报告层生成可审计溯源报告（含 MITRE ATLAS 映射），支持 SARIF 导出接入 CI。</div>
+      <div class="panel">
+        <div class="row">
+          <div class="col">
+            <label>目标 URL</label>
+            <input id="rUrl" placeholder="http://127.0.0.1:5000/chat/&lt;lab&gt;" />
+          </div>
+          <div class="col" style="max-width:200px">
+            <label>目标类型</label>
+            <select id="rType">
+              <option value="llm_app" selected>llm_app</option>
+              <option value="agent">agent</option>
+              <option value="rag">rag</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn" id="genReport">生成报告</button>
+        <div class="status" id="repStatus"></div>
+        <div class="links" id="repLinks" style="margin-top:10px;display:none">
+          <a id="lnkMd" href="#" target="_blank">📄 Markdown 报告</a>
+          <a id="lnkSarif" href="#" target="_blank">🛡 SARIF 2.1.0</a>
+        </div>
+      </div>
+      <div class="md" id="repMd" style="margin-top:18px;display:none"></div>
+    </section>
+
+    <!-- 基准评测 -->
+    <section class="view" id="bench">
+      <h2>基准评测（Golden 基线）</h2>
+      <div class="sub">基于 tests/golden/llmvault_benchmark.jsonl 的量化回放（注：基线口径，非 live 靶场实测）。</div>
+      <div class="grid4" id="benchKpi"></div>
+      <div class="panel">
+        <h3 style="margin-top:0">逐类通过率（per_class）</h3>
+        <div id="benchTable"></div>
+      </div>
+    </section>
+
+    <!-- 系统健康 -->
+    <section class="view" id="health">
+      <h2>系统健康</h2>
+      <div class="sub">平台 API 与各模块可用性自检。</div>
+      <div class="panel" id="healthBody"><div class="status">检测中…</div></div>
+    </section>
+  </main>
+</div>
+
+<script>
+const api = (p,opt)=>fetch(p,opt).then(r=>r.json().catch(()=>({error:r.statusText})));
+
+function sevClass(s){return (s||'info').toLowerCase();}
+function fmtMd(md){
+  // 极简 markdown → HTML（标题/表格/列表/加粗/代码块）
+  const esc=t=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let html='',inCode=false;
+  md.split('\n').forEach(line=>{
+    if(line.startsWith('```')){if(inCode){html+='</pre>';inCode=false;}else{html+='<pre>';inCode=true;}return;}
+    if(inCode){html+=esc(line)+'\n';return;}
+    if(/^#{1,3} /.test(line)){const lvl=line.indexOf(' ');const t=esc(line.slice(lvl+1));html+=`<h${lvl}>${t}</h${lvl}>`;return;}
+    if(/^\|.*\|$/.test(line)){
+      const cells=line.split('|').slice(1,-1).map(c=>c.trim());
+      if(/^-{2,}/.test(cells[0]||'')) return; // 分隔行
+      const tag=line.includes('--')&&/^:{0,2}-{2,}:{0,2}$/.test(cells.map(c=>c.replace(/ /g,'')).join('|').split('|')[0]||'')?'th':'td';
+      html+='<tr>'+cells.map(c=>`<${tag}>${esc(c)}</${tag}>`).join('')+'</tr>';
+      if(!html.includes('<table')) html='<table>'+html;
+      return;
+    }
+    if(/^[-*] /.test(line)){html+='<li>'+esc(line.slice(2))+'</li>';return;}
+    if(line.trim()===''){html+='<br/>';return;}
+    html+='<p>'+esc(line).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')+'</p>';
+  });
+  if(html.includes('<table')&&!html.endsWith('</table>')) html+='</table>';
+  return html;
+}
+
+// 导航
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  b.classList.add('active');
+  document.getElementById(b.dataset.view).classList.add('active');
+  if(b.dataset.view==='bench') loadBench();
+  if(b.dataset.view==='health') loadHealth();
+});
+document.getElementById('ttype').onchange=e=>{
+  document.getElementById('skillRow').style.display = e.target.value==='skill'?'flex':'none';
+};
+
+// 扫描发起
+document.getElementById('runScan').onclick=async()=>{
+  const st=document.getElementById('scanStatus'); st.textContent='扫描中…';
+  const body={url:document.getElementById('url').value,target_type:document.getElementById('ttype').value,
+    strategy:document.getElementById('strategy').value,extra:{}};
+  const sp=document.getElementById('skillPath').value;
+  if(body.target_type==='skill'&&sp) body.skill_path=sp;
+  try{
+    const r=await api('/api/scan/target',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(r.error){st.textContent='错误：'+r.error;return;}
+    st.textContent='完成。';
+    document.getElementById('rcount').textContent=r.findings_count||0;
+    renderFindings(r.findings||[]);
+    document.getElementById('scanResult').style.display='block';
+  }catch(e){st.textContent='请求失败：'+e;}
+};
+function renderFindings(fs){
+  if(!fs.length){document.getElementById('findingsTable').innerHTML='<p class="status">未发现风险。</p>';return;}
+  let h='<table><thead><tr><th>严重度</th><th>OWASP</th><th>名称</th><th>证据</th></tr></thead><tbody>';
+  fs.forEach(f=>{
+    h+=`<tr><td><span class="sev ${sevClass(f.severity)}">${f.severity||'info'}</span></td>`+
+       `<td>${f.owasp||'-'}</td><td>${f.name||f.vuln_type||''}</td><td>${(f.evidence||f.detail||'').slice(0,160)}</td></tr>`;
+  });
+  h+='</tbody></table>';
+  document.getElementById('findingsTable').innerHTML=h;
+}
+
+// 报告生成
+document.getElementById('genReport').onclick=async()=>{
+  const st=document.getElementById('repStatus'); st.textContent='生成中…';
+  const body={url:document.getElementById('rUrl').value,target_type:document.getElementById('rType').value,strategy:'standard',extra:{}};
+  try{
+    const r=await api('/api/ai-sec/report/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(r.error){st.textContent='错误：'+r.error;return;}
+    const id=r.scan_id;
+    st.textContent='已生成（scan_id='+id+'）';
+    document.getElementById('lnkMd').href='/api/ai-sec/report/'+id;
+    document.getElementById('lnkSarif').href='/api/ai-sec/report/'+id+'/sarif';
+    document.getElementById('repLinks').style.display='block';
+    const md=await (await fetch('/api/ai-sec/report/'+id)).text();
+    document.getElementById('repMd').innerHTML=fmtMd(md);
+    document.getElementById('repMd').style.display='block';
+  }catch(e){st.textContent='请求失败：'+e;}
+};
+
+// 基准
+async function loadBench(){
+  const s=await api('/api/ai-sec/benchmark/summary');
+  if(s.error){document.getElementById('benchKpi').innerHTML='<div class="kpi">加载失败</div>';return;}
+  const k=document.getElementById('benchKpi');
+  k.innerHTML=[
+    ['样本数',s.total],['召回率',(s.recall*100).toFixed(0)+'%'],
+    ['精确率',(s.precision*100).toFixed(0)+'%'],['误报',s.fp]
+  ].map(([a,b])=>`<div class="kpi"><b>${b}</b><span>${a}</span></div>`).join('');
+  let h='<table><thead><tr><th>类别</th><th>TP</th><th>FP</th><th>TN</th><th>FN</th><th>召回</th></tr></thead><tbody>';
+  Object.entries(s.per_class||{}).forEach(([c,m])=>{
+    const tp=m.tp||0,fp=m.fp||0,tn=m.tn||0,fn=m.fn||0;
+    const rec=tp+fn? (tp/(tp+fn)*100).toFixed(0)+'%':'100%';
+    h+=`<tr><td><span class="pill">${c}</span></td><td>${tp}</td><td>${fp}</td><td>${tn}</td><td>${fn}</td><td>${rec}</td></tr>`;
+  });
+  h+='</tbody></table>';
+  document.getElementById('benchTable').innerHTML=h;
+}
+
+// 健康
+async function loadHealth(){
+  const s=await api('/health');
+  const mods=['/api/scan/target','/api/scan/skill/upload','/api/ai-sec/report/scan','/api/ai-sec/metrics/summary','/api/ai-sec/benchmark/summary'];
+  let h=`<p>API 状态：<b>${s.status||'?'}</b> (${s.service||''})</p><ul>`;
+  for(const m of mods){
+    try{const r=await fetch(m,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+      h+=`<li>${m} — <span class="pill">可达</span></li>`;
+    }catch(e){h+=`<li>${m} — <span class="sev medium">异常</span></li>`;}
+  }
+  h+='</ul>';
+  document.getElementById('healthBody').innerHTML=h;
+}
+</script>
+</body>
+</html>

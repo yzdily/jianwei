@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鉴微 · Skill 供应链安全扫描</title>
+<style>
+  :root{
+    --bg:#f7f8fa; --card:#ffffff; --line:#e3e6eb; --text:#1f2329;
+    --muted:#6b7280; --brand:#2f6bff; --brand-d:#1d4ed8;
+    --ok:#16a34a; --warn:#d97706; --bad:#dc2626;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+       background:var(--bg);color:var(--text);padding:32px}
+  .wrap{max-width:760px;margin:0 auto}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px}
+  .drop{border:2px dashed var(--line);border-radius:12px;padding:36px 20px;text-align:center;cursor:pointer;transition:.15s}
+  .drop.over{border-color:var(--brand);background:#eef3ff}
+  .drop b{color:var(--brand)}
+  .hint{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.7}
+  .row{display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap}
+  label{font-size:13px;font-weight:600}
+  select{padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:#fff}
+  button{background:var(--brand);color:#fff;border:0;border-radius:8px;padding:9px 18px;font-size:13px;cursor:pointer}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  button.ghost{background:#fff;color:var(--text);border:1px solid var(--line)}
+  pre{background:#0f172a;color:#e2e8f0;padding:14px;border-radius:8px;overflow:auto;font-size:12px;max-height:320px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
+  .b-ok{background:#dcfce7;color:var(--ok)} .b-bad{background:#fee2e2;color:var(--bad)}
+  .b-warn{background:#fef3c7;color:var(--warn)}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:600}
+  .sev-critical,.sev-high{color:var(--bad)} .sev-medium{color:var(--warn)} .sev-low,.sev-info{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>鉴微 · Skill 供应链安全扫描</h1>
+  <div class="sub">安装前静态审计 agent 技能包 / MCP server 包 —— 绝不执行被扫代码</div>
+
+  <div class="card">
+    <div id="drop" class="drop">
+      <div>把 <b>目录打包(zip)</b> 或 <b>SKILL.md / 脚本</b> 拖到这里，或 <b>点击选择</b></div>
+      <div class="hint">支持：zip / 单文件 SKILL.md 或脚本；目录请先打包为 zip</div>
+      <input id="file" type="file" hidden>
+    </div>
+    <div class="row">
+      <label>策略</label>
+      <select id="strategy">
+        <option value="passive">passive（仅清单）</option>
+        <option value="standard" selected>standard（静态+供应链+YARA）</option>
+        <option value="redteam">redteam（+ LLM 语义降误报）</option>
+        <option value="compliance">compliance（差距清单）</option>
+      </select>
+      <button id="scan" disabled>开始扫描</button>
+      <button id="clear" class="ghost" disabled>清空</button>
+    </div>
+    <div class="hint">
+      护栏：单文件 ≤ 1 MiB、压缩包 ≤ 100 MiB；防 zip-bomb / 路径穿越；二进制仅特征比对不执行；扫完即焚。
+    </div>
+  </div>
+
+  <div id="out" class="card" style="display:none">
+    <div id="summary"></div>
+    <div id="findings"></div>
+    <details style="margin-top:10px"><summary>原始 JSON</summary><pre id="json"></pre></details>
+  </div>
+</div>
+
+<script>
+const drop=document.getElementById('drop'),fileInput=document.getElementById('file');
+const scanBtn=document.getElementById('scan'),clearBtn=document.getElementById('clear');
+const out=document.getElementById('out'),summary=document.getElementById('summary');
+const findingsEl=document.getElementById('findings'),jsonEl=document.getElementById('json');
+let selected=null;
+
+drop.onclick=()=>fileInput.click();
+fileInput.onchange=e=>{selected=e.target.files[0];refresh()};
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.ondrop=e=>{selected=e.dataTransfer.files[0];refresh()};
+
+function refresh(){
+  scanBtn.disabled=!selected; clearBtn.disabled=!selected;
+  drop.querySelector('div').innerHTML=selected?`已选择：<b>${selected.name}</b> (${(selected.size/1024).toFixed(1)} KiB)`:'把 <b>目录打包(zip)</b> 或 <b>SKILL.md / 脚本</b> 拖到这里，或 <b>点击选择</b>';
+}
+clearBtn.onclick=()=>{selected=null;fileInput.value='';out.style.display='none';refresh()};
+
+scanBtn.onclick=async()=>{
+  if(!selected)return;
+  scanBtn.disabled=true;scanBtn.textContent='扫描中…';
+  const fd=new FormData();
+  fd.append('file',selected);fd.append('strategy',document.getElementById('strategy').value);
+  try{
+    const r=await fetch('/api/scan/skill/upload',{method:'POST',body:fd});
+    if(!r.ok){const e=await r.json().catch(()=>({detail:r.statusText}));throw new Error(e.detail||r.statusText);}
+    const meta=await r.json();
+    const full=await (await fetch('/api/scan/skill/'+meta.scan_id)).json();
+    render(full);
+  }catch(err){
+    summary.innerHTML=`<span class="badge b-bad">连接失败</span> ${err.message}（确认 Web 服务已启动于 /api/scan/skill/upload）`;
+    out.style.display='block';
+  }finally{scanBtn.disabled=false;scanBtn.textContent='开始扫描';}
+};
+
+function render(d){
+  const safe=d.safe_to_install;
+  const badge=safe?'<span class="badge b-ok">通过（可安装）</span>':'<span class="badge b-bad">阻断（不可安装）</span>';
+  summary.innerHTML=`${badge} &nbsp; 风险评分 <b>${d.risk_score}/100</b>（${d.severity.toUpperCase()}）｜`
+    +`策略 ${d.strategy}｜文件 ${d.file_count}｜可执行 ${d.executable_count}｜发现 ${d.finding_count}｜耗时 ${d.elapsed}s`;
+  if(d.findings&&d.findings.length){
+    let rows=d.findings.map(f=>`<tr><td class="sev-${f.severity}">${f.severity.toUpperCase()}</td>`
+      +`<td>${f.owasp}/${f.vuln_type}</td><td>${f.file_path}:${f.line||''}</td>`
+      +`<td>${f.snippet||''}</td></tr>`).join('');
+    findingsEl.innerHTML=`<table><thead><tr><th>级别</th><th>类型</th><th>位置</th><th>证据</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }else{findingsEl.innerHTML='<div class="hint">未检出静态风险。</div>';}
+  jsonEl.textContent=JSON.stringify(d,null,2);
+  out.style.display='block';
+}
+</script>
+</body>
+</html>

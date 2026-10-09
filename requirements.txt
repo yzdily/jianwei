@@ -1,11 +1,12 @@
-﻿# 鉴微 JianWei AI 安全测试平台 - 依赖
-# 玄鉴引擎（封板 v2.0）
+# 鉴微 JianWei AI 安全测试平台 - 依赖
+# 玄鉴引擎（持续维护，锁定 v2.0 基线）
 xuanjian @ git+https://github.com/yzdily/xuanjian@v2.0
 
 # Web 框架
 fastapi>=0.100.0
 uvicorn>=0.23.0
 sse-starlette>=1.6.0
+python-multipart>=0.0.9
 
 # HTTP 客户端
 httpx>=0.24.0
@@ -26,3 +27,7 @@ playwright>=1.40.0
 python-dotenv>=1.0.0
 loguru>=0.7.0
 rich>=13.0.0
+
+# 测试
+pytest>=7.0.0
+pytest-asyncio>=0.21.0

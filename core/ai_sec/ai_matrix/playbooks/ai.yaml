@@ -1,0 +1,45 @@
+# ai 域 playbook（《AI风险接入testflow矩阵_设计稿》§3.3）
+# 执行者三分：local=确定性检查 / llm=注入探针（复用 core.ai_sec.prompt_injection）/ tool=平台能力
+# 每步产物 → adapter.to_matrix_finding → GATE-TRI 准入 → 矩阵格五态
+domain: ai
+steps:
+  - id: ai_asset_fingerprint
+    executor: local
+    rules: [llm_app_detect]
+    description: 被动识别 LLM 应用与工具面（0 攻击）
+
+  - id: direct_injection
+    executor: llm
+    probe_category: direct
+    description: 直接注入 / 系统提示抽取
+
+  - id: jailbreak_multiturn
+    executor: llm
+    probe_category: jailbreak
+    depth_chain: 1
+    description: 多轮越狱（DAN/STAN/渐进）
+
+  - id: indirect_injection
+    executor: llm
+    probe_category: indirect
+    description: 间接注入（RAG 文档 / 工具返回 / 网页）
+
+  - id: ai_rag_sec
+    executor: tool
+    tool: ai_rag_sec
+    description: RAG 投毒 / 越权检索 / 溯源一致性
+
+  - id: ai_agent_eval
+    executor: tool
+    tool: ai_agent_eval
+    description: Agent 工具越权 / 编排逃逸 / 记忆投毒
+
+  - id: skill_supply_chain
+    executor: local
+    rules: [skill_scan]
+    description: Skill/MCP 包静态供应链（TargetType=skill 时启用）
+
+termination:
+  - depth >= 2
+  - no_new_findings_in_layer
+verdict_ref: run_triage_gate

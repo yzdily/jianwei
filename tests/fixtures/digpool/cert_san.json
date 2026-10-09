@@ -1,0 +1,5 @@
+[
+  {"domain": "api.example.com"},
+  {"san": "cdn.example.com"},
+  {"cn": "admin.example.com"}
+]

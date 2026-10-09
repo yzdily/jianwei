@@ -1,0 +1,13 @@
+# 鉴微 JianWei - 开发/CI 依赖（测试所需最小集）
+# 说明：测试不需安装玄鉴引擎（`xuanjian`）——引擎缺失时平台自动降级
+#       （AI 矩阵门→本地等价、digpool→StubCore），故 CI 无需拉取重型引擎。
+pytest>=7.4
+pytest-asyncio>=0.21
+pytest-cov>=4.1
+httpx>=0.24.0
+pyyaml>=6.0
+fastapi>=0.100.0
+uvicorn>=0.23.0
+sse-starlette>=1.6.0
+python-multipart>=0.0.9
+pydantic>=2.0.0

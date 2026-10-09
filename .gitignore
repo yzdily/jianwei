@@ -46,3 +46,7 @@ logs/
 # Test artifacts
 test_baseline.txt
 .pytest_cache/
+
+# Internal
+.workbuddy/
+818/

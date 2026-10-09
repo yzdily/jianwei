@@ -1,0 +1,19 @@
+# 鉴微 JianWei AI 安全测试平台 - 最小依赖集（MVP 工作台子集）
+# 用途：`pip install -r requirements-min.txt` 即可跑通 CLI（core/cli.py）与
+#       工作台（core/digpool demo），无需 Web / LLM / 浏览器等重依赖，降低「先跑起来」门槛。
+#
+# 完整依赖见 requirements.txt（含 FastAPI/web、LLM SDK、Playwright 等）。
+#
+# 说明：CLI 与工作台（StubCore 降级）纯标准库即可运行；以下为闭环仅有的
+#       第三方运行时依赖，代码中均懒加载 + 可选回退：
+#       - pyyaml → loops/loop_controller.py（未安装回退内嵌矩阵）
+#       - httpx  → attacks.py / agent.py / supply_chain.py（未安装仅禁用真实 HTTP 发射）
+
+# 引擎（生产扫描后端，跟随引擎演进；缺失时工作台自动降级 StubCore）
+xuanjian @ git+https://github.com/yzdily/xuanjian@v2.0
+
+# 配置解析（YAML 矩阵）
+pyyaml>=6.0
+
+# HTTP 客户端（真实攻击发射 / 供应链查询）
+httpx>=0.24.0

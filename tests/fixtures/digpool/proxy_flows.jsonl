@@ -1,0 +1,4 @@
+{"request": {"host": "api.example.com", "method": "GET", "url": "https://api.example.com/v1/users", "path": "/v1/users"}}
+{"request": {"host": "cdn.example.com", "method": "GET", "url": "https://cdn.example.com/static/app.js"}}
+{"request": {"host": "admin.example.com", "method": "POST", "url": "https://admin.example.com/login"}}
+{"request": {"host": "evil-unrelated.com", "method": "GET", "url": "https://evil-unrelated.com/track"}}

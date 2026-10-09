@@ -1,5 +1,7 @@
 ﻿# 鉴微 JianWei · AI 安全测试平台
 
+**简体中文** | [English](README.en.md)
+
 > 「见微知著，洞见 AI 之险」
 
 **由 [玄鉴 XuanJian](https://github.com/yzdily/xuanjian) 持续维护的引擎驱动的开源 AI 安全测试平台**
@@ -8,7 +10,6 @@
   <a href="#快速开始">快速开始</a> ·
   <a href="#架构">架构</a> ·
   <a href="#功能模块">功能模块</a> ·
-  <a href="#路线图">路线图</a> ·
   <a href="#贡献">贡献</a>
 </p>
 
@@ -176,15 +177,6 @@ python -m core.digpool loop --trigger sqli_possible   # 跑一次 LOOP 骨架
 | 边界 | 引擎 / 规则 / SKILL（上游持续演进） | 核心平台（L1-L5 + 测试集 + 看板）全开源 |
 
 > **依赖模式**：玄鉴引擎持续维护中（不冻结功能），鉴微跟随引擎演进；平台层只消费引擎公开契约，不反向修改。
-
-## 路线图
-
-| 阶段 | 时间 | 重点 |
-|---|---|---|
-| **Phase 1** | 2026 Q3 | 理论地基（OWASP LLM Top 10）+ sec_shield 原型 |
-| **Phase 2** | 2026 Q4 | LLM 漏洞扫描器 + Agent 安全评测 + Prompt 注入测试集 ✅ 已落地 |
-| **Phase 3** | 2027 Q1 | RAG 安全检测 ✅ 已落地 + sec_shield 企业策略 + 评测看板 |
-| **Phase 4** | 2027 Q2 | 平台 Demo + 技术博客 + 求职冲刺 |
 
 ## 许可证
 

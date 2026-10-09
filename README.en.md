@@ -10,7 +10,7 @@
   <a href="#quick-start">Quick Start</a> ·
   <a href="#architecture-6-layers">Architecture</a> ·
   <a href="#modules">Modules</a> ·
-  <a href="#contributing">Contributing</a>
+  <a href="#unified-console-webstatic">Unified Console</a>
 </p>
 
 ---
@@ -124,8 +124,9 @@ pip install -r requirements-min.txt
 # 3. Configure the LLM
 cp .env.example .env
 
-# 4. Launch
-python start.py
+# 4. Launch (the console runs with zero keys)
+python start.py            # print module list and platform status
+python start.py --serve    # start Web API + unified console → http://127.0.0.1:8000/
 ```
 
 ## Quick Usage
@@ -138,34 +139,87 @@ python -m core.cli scan-skill ./my-skill/ --strategy standard
 # Dual-axis scan target (Web / API / LLM app / Agent / RAG)
 python -m core.cli scan https://llm.example.com/v1/chat --target-type llm_app --strategy standard
 
-# Start the Web API (upload skill package / launch scan / digpool chat / export SARIF)
-uvicorn web.api:app --reload
+# Start the Web API + unified console (--host / --port / --reload optional)
+python start.py --serve --port 8000
+# equivalent to: uvicorn web.api:app --reload
+```
+
+### Unified Console (web/static)
+
+Single-page console, zero-dependency vanilla JS, no external CDN (works offline / on intranet):
+
+| No. | View | Backend endpoint |
+|------|------|----------|
+| 01 | Dual-axis Scan | `POST /api/scan/target` |
+| 02 | Upload Skill | `POST /api/scan/skill/upload` + `GET /api/scan/skill/{id}` + `/sarif` |
+| 03 | Agent Workbench | `POST /api/digpool/run` (SSE stream) + `/session/empty` |
+| 04 | Report Center | `POST /api/ai-sec/report/scan` + `GET .../report/{id}` + `/sarif` |
+| 05 | Benchmark | `GET /api/ai-sec/benchmark/summary` |
+| 06 | L4 Metrics | `POST /api/ai-sec/metrics/summary` |
+| 07 | System Health | `GET /health` + `GET /openapi.json` |
+| 08 | System Settings | `GET /api/platform/info` (sanitized runtime) |
+| 09 | RBAC | `GET/POST/DELETE /api/rbac/{overview,users,groups,roles}` |
+
+> The console has a **login gate**: `POST /api/auth/login` first, then the session is injected via
+> `Authorization: Bearer`. All product routes are checked by `Depends(require_auth)`; `/api/auth/*`
+> (login/me/logout) are the only public endpoints. Multi-user + RBAC live in `web/api/auth.py` and
+> `web/api/rbac_api.py` (in-memory storage), with per-role permission checks (`scan.run` / `skill.upload`
+> / `digpool.run` / `report.read` / `rbac.manage`, etc.). When no key is configured, it degrades to
+> local-dev allow-all.
+
+Frontend layout (each file stays small and focused):
+
+```
+web/static/
+├── index.html            # Shell: sidebar / topbar / user card / modal mount points
+├── css/{tokens,shell,components}.css
+└── js/
+    ├── api.js            # fetch wrapper + SSE-over-fetch reader
+    ├── ui.js             # DOM helpers / Toast / modal / Markdown / findings table
+    ├── login.js          # Login gate (unauthenticated mask + session / logout)
+    ├── views/*.js        # One module per view (9 total), registering into JW.viewList
+    └── app.js            # Hash router + nav rendering + user menu
+```
+
+Other endpoints (for CLI / CI):
+
+```
 #  → POST /api/scan/skill/upload  (multipart: file + strategy)
 #  → POST /api/scan/target         (JSON: url + target_type + strategy)
 #  → POST /api/digpool/chat        (SSE conversational pentesting terminal)
 #  → GET  /api/scan/skill/{scan_id}/sarif
 ```
 
-Run tests (including the annotated range benchmark):
+Run tests:
 
 ```bash
-pytest tests/ -q
+# Unit / API / contract tests (default path, fast)
+pytest                      # equivalent to pytest -m "not e2e"
+
+# Browser end-to-end (Playwright: upload Skill / dual-axis scan / report / health / RBAC)
+pip install -r requirements-dev.txt
+pytest -m e2e               # uses local Chrome/Edge if present; otherwise playwright install chromium
 ```
 
-## MVP Workbench (AI Pentesting Loop)
+> E2E and unit tests are **two separate runs**: Playwright's sync API occupies the event loop in-process,
+> which conflicts with pytest-asyncio async cases in the same process, so `pytest.ini` defaults to
+> `addopts = -m "not e2e"` and CI should run it as an independent step.
 
-> The JianWei MVP is an Agentic Loop workbench benchmarked against 蛙池AI / XuanJian DEEP tier (not a single scanner), located in `core/digpool/`,
+## Agentic Loop Workbench
+
+> JianWei's agent workbench lives in `core/digpool/`: an Agentic Loop chaining "plan → tool execution → validate → report",
 > and runs with zero dependencies (it automatically degrades to StubCore when the XuanJian engine is missing, no LLM key required).
+> Its UI entry is console view **03 Agent Workbench**.
 
 ```bash
-# End-to-end demo: skill-scan real detection + six-dimension governance approval gate + LOOP engine skeleton
+# End-to-end demo: skill-scan real detection + six-dimension governance approval gate + LOOP run
 python -m core.digpool demo --target tests/fixtures/malicious_skill
 python -m core.digpool demo --target tests/fixtures/clean_skill
 python -m core.digpool tools          # list registered curated tools
-python -m core.digpool loop --trigger sqli_possible   # run the LOOP skeleton once
+python -m core.digpool plan  --goal "run one security test on the target" --target ./my-skill/  # goal → task DAG + budget
+python -m core.digpool loop  --trigger sqli_possible                                            # run the LOOP once
+python -m core.digpool solve --target ./my-skill/                                               # closed loop: plan→execute→verify→report→memory
 ```
-
-See [`MVP_GAP_ANALYSIS.md`](./MVP_GAP_ANALYSIS.md) for the to-do list and milestones.
 
 ## Relationship with XuanJian
 

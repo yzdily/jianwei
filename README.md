@@ -8,9 +8,9 @@
 
 <p>
   <a href="#快速开始">快速开始</a> ·
-  <a href="#架构">架构</a> ·
+  <a href="#架构6-层">架构</a> ·
   <a href="#功能模块">功能模块</a> ·
-  <a href="#贡献">贡献</a>
+  <a href="#统一控制台webstatic">统一控制台</a>
 </p>
 
 ---
@@ -158,6 +158,12 @@ python start.py --serve --port 8000
 | 06 | L4 度量台 | `POST /api/ai-sec/metrics/summary` |
 | 07 | 系统健康 | `GET /health` + `GET /openapi.json` |
 | 08 | 系统设置 | `GET /api/platform/info`（脱敏运行态） |
+| 09 | 权限管理 | `GET/POST/DELETE /api/rbac/{overview,users,groups,roles}` |
+
+> 控制台带**登录闸门**：未登录先走 `POST /api/auth/login`，成功后以 `Authorization: Bearer` 注入会话；
+> 全部产品路由经 `Depends(require_auth)` 校验，`/api/auth/*`（login/me/logout）为公开端点。
+> 多用户与 RBAC 由 `web/api/auth.py` + `web/api/rbac_api.py` 提供（内存态存储）。权限按角色细粒度判定：
+> `scan.run` / `skill.upload` / `digpool.run` / `report.read` / `rbac.manage` 等；未配置密钥时退化为本地开发全放行。
 
 前端结构（每个文件保持小而聚焦，便于评审）：
 
@@ -168,7 +174,8 @@ web/static/
 └── js/
     ├── api.js            # fetch 封装 + SSE-over-fetch 读取器
     ├── ui.js             # DOM 助手 / Toast / 弹窗 / Markdown / 发现项表格
-    ├── views/*.js        # 每个视图一个模块，向 JW.viewList 注册
+    ├── login.js          # 登录闸门（未登录遮罩 + 会话建立 / 登出）
+    ├── views/*.js        # 每个视图一个模块（共 9 个），向 JW.viewList 注册
     └── app.js            # 哈希路由 + 导航渲染 + 用户菜单
 ```
 
@@ -196,20 +203,20 @@ pytest -m e2e               # 本机有 Chrome/Edge 则免下载；无则先 pla
 > 与 pytest-asyncio 的异步用例同进程会互相干扰，故 `pytest.ini` 默认用
 > `addopts = -m "not e2e"` 排除，CI 也建议作为独立步骤。
 
-## MVP 工作台（AI 挖洞闭环）
+## 智能体工作台（Agentic Loop）
 
-> 鉴微 MVP 是对标蛙池AI / 玄鉴 DEEP 档的 Agentic Loop 工作台（非单个扫描器），位于 `core/digpool/`，
-> 零依赖可跑（玄鉴引擎缺失时自动降级 StubCore，无需 LLM 密钥）。
+> 鉴微的智能体工作台位于 `core/digpool/`：以 Agentic Loop 串联「规划 → 工具执行 → 验证 → 报告」，
+> 零依赖可跑（玄鉴引擎缺失时自动降级 StubCore，无需 LLM 密钥），UI 入口为控制台 **03 智能体工作台**。
 
 ```bash
-# 端到端演示：skill-scan 真实检测 + 六维治理审批门 + LOOP 引擎骨架
+# 端到端演示：skill-scan 真实检测 + 六维治理审批门 + LOOP 执行
 python -m core.digpool demo --target tests/fixtures/malicious_skill
 python -m core.digpool demo --target tests/fixtures/clean_skill
 python -m core.digpool tools          # 列出已注册 curated 工具
-python -m core.digpool loop --trigger sqli_possible   # 跑一次 LOOP 骨架
+python -m core.digpool plan  --goal "对目标做一次安全测试" --target ./my-skill/  # 目标 → 任务 DAG + 预算
+python -m core.digpool loop  --trigger sqli_possible                            # 跑一次 LOOP
+python -m core.digpool solve --target ./my-skill/                               # 闭环：plan→execute→verify→report→memory
 ```
-
-待改清单与里程碑见 [`MVP_GAP_ANALYSIS.md`](./MVP_GAP_ANALYSIS.md)。
 
 ## 与玄鉴的关系
 

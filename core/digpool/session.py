@@ -26,6 +26,7 @@ from core.digpool.agent import BaseAgent, get_agent
 from core.digpool.agents.planner import BasePlanner, Plan, get_planner
 from core.digpool.agents.reporter import Reporter
 from core.digpool.agents.validator import BaseValidator, get_validator
+from core.digpool.budget import BudgetMeter
 from core.digpool.core_link import CORE_LINKED, CoreBackend, get_core_backend, get_loop_controller
 from core.digpool.memory.store import MemoryStore
 from core.digpool.scope import Scope, ScopeUpdate, TrafficCorpus
@@ -312,8 +313,11 @@ class DigPoolSession:
         self._emit(SessionPhase.RUN_STARTED, "solve", {"goal": goal})
         plan = await self.plan(goal)
 
-        # 预算计量（六维治理 · Budget）：超额即熔断（仍继续出报告，但如实标注）
+        # 预算计量（六维治理 · Budget）：计划预留 + 实际消耗双轨
+        # - 计划预留：Planner 估算额度（governance.charge），超额即熔断；
+        # - 实际消耗：BudgetMeter 按每次执行真实产物做细粒度 token 计量（L4 口径）。
         budget = self.governance.charge(plan.budget_tokens)
+        meter = BudgetMeter(planned=plan.budget_tokens)
 
         executions: list[dict] = []
         findings: list[Any] = []
@@ -329,6 +333,7 @@ class DigPoolSession:
                     "ok": res.get("ok", False), "summary": res.get("summary", ""),
                     "blocked_by_governance": res.get("blocked_by_governance", False),
                 })
+                meter.record(f"subtask:{st.id}", {"tool": st.tool, "summary": res, "findings": res.get("findings") or []})
             elif st.action == "loop" and st.trigger:
                 out = await self.run(st.trigger)
                 findings.extend(self.last_findings)
@@ -338,10 +343,12 @@ class DigPoolSession:
                     "depth_chain": out.get("depth_chain_len", 0),
                     "termination": out.get("termination"),
                 })
+                meter.record(f"subtask:{st.id}", {"trigger": st.trigger, "depth_chain": out.get("depth_chain"), "findings": [getattr(f, "detail", None) for f in self.last_findings]})
 
         # M3 · 双重去误报
         validation = self.validator.validate(findings, context={"target": self.target, "goal": goal})
         confirmed = [r for r in validation if r.verified]
+        meter.record("verify", [r.to_dict() for r in validation])
         counts = {
             "total": len(findings),
             "confirmed": len(confirmed),
@@ -354,12 +361,16 @@ class DigPoolSession:
         project_key = self.memory.project_key_for(self.target or goal)
         recall_before = self.memory.recall(project_key)
         run_id = f"RUN-{uuid.uuid4().hex[:8]}"
+        budget_state = meter.summary()
         report_md = self.reporter.build(
             goal=goal, target=self.target, session_id=self.session_id, run_id=run_id,
             plan=plan, executions=executions, validation=validation,
             memory_key=project_key, memory_recall=recall_before,
-            extra={"预算熔断": "否" if budget.allow else "是"},
+            budget=budget_state,
+            extra={"预算熔断": "是" if (not budget.allow or budget_state["over"]) else "否"},
         )
+        meter.record("report", report_md)
+        budget_state = meter.summary()  # 含 report 段的最终口径
         report_path: Optional[str] = None
         if save:
             saved = self.memory.save_report(project_key, run_id, report_md)
@@ -386,6 +397,7 @@ class DigPoolSession:
             "validation": [r.to_dict() for r in validation],
             "counts": counts,
             "confirmed_findings": [getattr(r.finding, "id", None) for r in confirmed],
+            "budget": budget_state,
             "report_markdown": report_md,
             "report_path": report_path,
             "memory_key": project_key,

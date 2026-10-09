@@ -117,6 +117,10 @@ async def _solve(goal: str, target: str | None, report_dir: str | None) -> int:
     print(f"  验证：总发现 {c['total']}｜confirmed {c['confirmed']}｜suspect {c['suspect']}｜rejected {c['rejected']}")
     for fid in out["confirmed_findings"]:
         print(f"    ✅ {fid}")
+    b = out.get("budget") or {}
+    status = "超预算（熔断）" if b.get("over") else "预算内"
+    if b:
+        print(f"  预算实测：实际 {b.get('actual', 0)} / 计划 {b.get('planned', 0)} tokens｜{status}")
     print(f"  报告：{out['report_path'] or '(未落盘)'}")
     print(f"  记忆：key={out['memory_key']}（历史运行 {out['memory_recall'].get('run_count', 0)} 次）")
     return 0

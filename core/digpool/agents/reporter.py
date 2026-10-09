@@ -42,6 +42,7 @@ class Reporter:
         metrics: Any = None,
         memory_key: Optional[str] = None,
         memory_recall: Optional[dict] = None,
+        budget: Optional[dict] = None,
         extra: Optional[dict] = None,
     ) -> str:
         execution_rows = {e.get("subtask"): e for e in (executions or []) if isinstance(e, dict)}
@@ -54,6 +55,12 @@ class Reporter:
         lines.append(f"- **生成时间**：{time.strftime('%Y-%m-%d %H:%M:%S')}")
         if plan is not None:
             lines.append(f"- **预算估算**：{plan.budget_tokens} tokens")
+        if budget is not None and isinstance(budget, dict):
+            status = "超预算（熔断）" if budget.get("over") else "预算内"
+            lines.append(
+                f"- **预算实测**：实际 {budget.get('actual', 0)} / 计划 "
+                f"{budget.get('planned', 0)} tokens（{status}）"
+            )
         lines.append("")
 
         # 1. 执行摘要
@@ -136,7 +143,26 @@ class Reporter:
                 lines.append(f"| {_cell(d['vuln_type'])} | {_cell(d['location'])} | {_cell('；'.join(d['reasons']))} |")
             lines.append("")
 
-        # 5. 评测度量
+        # 5. 预算实测（L4 细粒度 token 计量，可选）
+        if budget is not None and isinstance(budget, dict):
+            lines.append("## 6. 预算实测（L4 计量）")
+            lines.append("")
+            lines.append(f"- 计划预算：**{budget.get('planned', 0)}** tokens")
+            lines.append(f"- 实际消耗：**{budget.get('actual', 0)}** tokens")
+            lines.append(f"- 剩余配额：{budget.get('remaining', 0)} tokens")
+            status = "❌ 已超预算（熔断标记）" if budget.get("over") else "✅ 预算内"
+            lines.append(f"- 状态：{status}")
+            lines.append("- 计量口径：无依赖近似（非 ASCII 1 字 ≈ 1 token；ASCII 4 字符 ≈ 1 token）")
+            lines.append("")
+            breakdown = [u for u in (budget.get("breakdown") or []) if isinstance(u, dict)]
+            if breakdown:
+                lines.append("| 消耗归属 | 消耗（tokens） |")
+                lines.append("|---|---|")
+                for u in breakdown:
+                    lines.append(f"| {_cell(u.get('label'))} | {_cell(u.get('tokens'))} |")
+                lines.append("")
+
+        # 6. 评测度量
         if metrics is not None:
             try:
                 lines.append(self._metrics_renderer(metrics).rstrip())

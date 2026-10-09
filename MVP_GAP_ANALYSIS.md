@@ -1,6 +1,6 @@
 # 鉴微 JianWei · MVP 范围纠偏与「还有哪些要改」清单
 
-> 整理日期：2026-09-12 ｜ **状态更新：2026-10-08**
+> 整理日期：2026-09-12 ｜ **状态更新：2026-10-09**
 > 对标依据：
 > - `F:\xuanjian-main\hollowing-optimization-plan\plan\0912_DigPool_tech_analysis.md`（斗象蛙池AI / DigPool AI 竞品技术方案）
 > - `F:\xuanjian-main\hollowing-optimization-plan\plan\0912_XuanJian_AI_Demo_TechPlan.md`（玄鉴 AI 挖洞工作台 Demo 技术方案）
@@ -39,6 +39,7 @@
 | **M3 Validator** | `core/digpool/agents/validator.py` | ✅ 2026-10 晚 | 证据门 + 佐证门双重去误报；引擎缺失降级 `StubValidator` |
 | **M4 Reporter + 记忆** | `core/digpool/agents/reporter.py` + `memory/store.py` | ✅ 2026-10 晚 | 报告落盘（覆盖矩阵/详情/证据）+ 项目级记忆 `recall()` |
 | **闭环编排** | `core/digpool/session.py` `plan()`/`solve()` | ✅ 2026-10 晚 | plan→execute→verify→report→memory 贯通 |
+| **L4 细粒度预算计量** | `core/digpool/budget.py`（`BudgetMeter`）| ✅ 2026-10-09 | 计划 vs 实际 token 双轨计量，`solve()` 输出 `budget` 汇总，并体现在报告「预算实测」小节 |
 
 ---
 
@@ -67,9 +68,9 @@
 |---|---|---|---|
 | M1 Planner | 自然语言 → 任务 DAG + 预算估算 | ✅ 已实现 `agents/planner.py`（目标→DAG+预算，Deterministic/LLM） | LLM 计划路径可再补端到端用例 |
 | M2 Recon + Runtime | 浏览器代理执行 + 流量监听 | Scope/ingest ✅；Runtime 依赖引擎 | 明确标注「依赖引擎」或 vendored 最小运行时 |
-| M3 Validator 去误报 | 双重去误报（harm_validation） | ✅ 已实现 `agents/validator.py`（证据门+佐证门；接引擎 harm_validation，缺失降级 Stub） | 引擎在线时校验 harm_validation 契约 |
+| M3 Validator 去误报 | 双重去误报（harm_validation） | ✅ 已实现 `agents/validator.py`（证据门+佐证门；接引擎 harm_validation，缺失降级 Stub） | ✅ 2026-10-09 引擎在线契约测试 `tests/test_engine_contract.py`（缺引擎 skip，在线实测判定映射与降级） |
 | M4 Reporter + 记忆 | 报告 + 项目记忆沉淀 | ✅ 已实现 `agents/reporter.py` + `memory/store.py`（报告落盘 + 项目级记忆 recall） | — |
-| 治理-预算/验收 | 预算计量 + 证据驱动验收 | 审批/熔断 ✅；`solve()` 按计划预算计量；验收接 Validator ✅ | 接真实 token 计数（细粒度） |
+| 治理-预算/验收 | 预算计量 + 证据驱动验收 | 审批/熔断 ✅；`solve()` 按计划预算计量；验收接 Validator ✅ | ✅ 2026-10-09 L4 细粒度 token 计量 `budget.py`（计划 vs 实际，无依赖近似口径） |
 
 ### P2 · 平台层补全（与 L0–L5 对齐）
 
@@ -99,7 +100,7 @@
 
 1. ~~**补 M1 Planner + M4 Reporter/Memory**~~ —— ✅ 已完成（`agents/planner.py` + `agents/reporter.py` + `memory/store.py`），工作台已从"骨架"变为"可演示闭环"。
 2. ~~**D 工作台闭环**（Planner/Validator/Reporter/Memory）~~ —— ✅ 已完成，`python -m core.digpool solve --target X` 一键贯通。
-3. **M2 Recon + Runtime**：浏览器代理执行 + 流量监听（依赖引擎，或 vendored 最小运行时）。
-4. **引擎在线校验**：`HarmValidator` 对 `harm_validation` 公开契约的实测对接；L4 细粒度 token 计量。
+3. ~~**引擎在线校验 + L4 细粒度 token 计量**~~ —— ✅ 已完成：`tests/test_engine_contract.py`（缺引擎 skip，在线实测 harm_validation 契约与降级）；`core/digpool/budget.py`（计划 vs 实际 token 双轨计量，报告带「预算实测」）。
+4. **M2 Recon + Runtime**：浏览器代理执行 + 流量监听（依赖引擎，或 vendored 最小运行时）；L1 资产发现的引擎在线契约测试可仿照 `test_engine_contract.py` 补齐。
 
-> 一句话：**MVP 方向已纠正为 `core/digpool` 工作台，已零依赖跑通；三测试集 + Web SSE + 真实 LLM + AI 矩阵 sidecar + 工作台闭环（Planner/Validator/Reporter/Memory）均已落地；剩余主要是依赖引擎的 M2 Runtime 与引擎在线契约校验。**
+> 一句话：**MVP 方向已纠正为 `core/digpool` 工作台，已零依赖跑通；三测试集 + Web SSE + 真实 LLM + AI 矩阵 sidecar + 工作台闭环（Planner/Validator/Reporter/Memory）+ L4 细粒度预算计量 + 引擎契约测试均已落地；剩余主要是依赖引擎的 M2 Runtime 与引擎侧发版后的 `requirements.txt` 基线升级（对齐 testflow v4）。**

@@ -170,6 +170,11 @@ async def test_solve_closed_loop_end_to_end(tmp_path):
     assert out["counts"]["total"] >= 1
     assert out["counts"]["confirmed"] >= 1
     assert out["confirmed_findings"]
+    # L4 细粒度预算：计划 vs 实际计量
+    assert out["budget"]["planned"] > 0
+    assert out["budget"]["actual"] > 0
+    assert out["budget"]["breakdown"], "预算应有按 subtask 的明细"
+    assert "预算实测" in out["report_markdown"]
     # report + memory
     assert out["report_path"] and Path(out["report_path"]).exists()
     assert out["report_markdown"].startswith("# 鉴微 DigPool 安全测试报告")

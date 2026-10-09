@@ -28,7 +28,7 @@ from fastapi.responses import JSONResponse
 from core.llm_security.skill_scan.upload import handle_upload, store_get
 from core.log import get_logger
 
-from .deps import require_api_key
+from .auth import RequireAuth
 
 log = get_logger("web.api.skill")
 
@@ -39,7 +39,7 @@ router = APIRouter(prefix="/api/scan/skill", tags=["skill-scan"])
 async def upload_skill(
     file: UploadFile = File(...),
     strategy: str = Form("standard"),
-    _auth: bool = Depends(require_api_key),
+    _auth: bool = Depends(RequireAuth("skill.upload")),
 ):
     """上传技能包（zip / 单文件 SKILL.md）并触发静态扫描。
 
@@ -93,7 +93,7 @@ async def get_skill_result(scan_id: str):
 
 
 @router.get("/{scan_id}/sarif")
-async def get_skill_sarif(scan_id: str, _auth: bool = Depends(require_api_key)):
+async def get_skill_sarif(scan_id: str, _auth: bool = Depends(RequireAuth("report.read"))):
     """导出 SARIF 2.1.0（设计 §7，接入 DevSecOps）。"""
     data = store_get(scan_id)
     if not data:

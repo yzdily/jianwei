@@ -25,6 +25,7 @@ JS_FILES = [
     "views/health.js",
     "views/system.js",
     "views/rbac.js",
+    "login.js",
 ]
 
 

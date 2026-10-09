@@ -11,18 +11,19 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from core.log import get_logger
+from fastapi import Depends
 from .skill_scan_api import router as skill_router
 from .scan_api import router as scan_router
 from .ai_sec_api import router as ai_sec_router
 from .digpool_api import router as digpool_router
 from .rbac_api import router as rbac_router
+from .auth import router as auth_router, require_auth
 
 log = get_logger("web.api")
 
 # 控制台「系统设置 / 版本信息」需要的运行态开关。
 # 只上报「是否已配置」，绝不回传值本身——避免界面变成凭据泄漏面。
 _ENV_FLAGS = {
-    "auth_enabled": "JIANWEI_API_KEY",
     "llm_key_present": "DIGPOOL_LLM_API_KEY",
 }
 
@@ -67,6 +68,10 @@ def _collect_platform_info(app: FastAPI) -> dict[str, Any]:
     }
     for key, env_name in _ENV_FLAGS.items():
         info[key] = bool(os.getenv(env_name))
+    # 鉴权开关：服务密钥 (JIANWEI_API_KEY) 与多用户登录 (JIANWEI_ADMIN_PASSWORD) 任一开启即视为鉴权启用
+    info["auth_enabled"] = bool(os.getenv("JIANWEI_API_KEY") or os.getenv("JIANWEI_ADMIN_PASSWORD"))
+    # 多用户登录页是否出现（只有设置管理员口令才启用会话登录）
+    info["login_enabled"] = bool(os.getenv("JIANWEI_ADMIN_PASSWORD"))
     return info
 
 
@@ -96,11 +101,15 @@ def create_app() -> FastAPI:
         """返回控制台所需的脱敏运行态信息（密钥仅以布尔存在性呈现）。"""
         return _collect_platform_info(app)
 
-    app.include_router(skill_router)
-    app.include_router(scan_router)
-    app.include_router(ai_sec_router)
-    app.include_router(digpool_router)
-    app.include_router(rbac_router)
+    # 产品路由统一挂会话依赖：多用户模式下必须登录才能使用控制台；
+    # dev 模式（两开关均未设）与有效 X-API-Key 仍放行（向后兼容）。
+    app.include_router(skill_router, dependencies=[Depends(require_auth)])
+    app.include_router(scan_router, dependencies=[Depends(require_auth)])
+    app.include_router(ai_sec_router, dependencies=[Depends(require_auth)])
+    app.include_router(digpool_router, dependencies=[Depends(require_auth)])
+    app.include_router(rbac_router, dependencies=[Depends(require_auth)])
+    # 认证路由（login / logout / me）不挂依赖，保持公开可达
+    app.include_router(auth_router)
 
     # §13 平台 UI：挂载静态前端（web/static）
     _here = os.path.dirname(os.path.abspath(__file__))

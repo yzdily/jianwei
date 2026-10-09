@@ -8,11 +8,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from core.log import get_logger
 from core.fast_scanner import FastScanner, ScanTarget
+
+from .auth import RequireAuth
 
 log = get_logger("web.api.scan")
 
@@ -37,7 +39,7 @@ class ScanResponse(BaseModel):
 
 
 @router.post("/target", response_model=ScanResponse)
-async def scan_target(req: ScanRequest):
+async def scan_target(req: ScanRequest, _auth: bool = Depends(RequireAuth("scan.run"))):
     """对目标执行双轴扫描。"""
     target = ScanTarget(
         url=req.url,

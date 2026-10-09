@@ -139,6 +139,10 @@
       );
     }
     if (kind === "logout") {
+      if (typeof JW.logout === "function") {
+        JW.logout();
+        return;
+      }
       const d = await JW.loadPlatformInfo();
       return openModal(
         "退出登录",

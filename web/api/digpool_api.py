@@ -24,6 +24,9 @@ from core.digpool.scope import TrafficCorpus
 from core.digpool.session import DigPoolEvent, DigPoolSession, SessionPhase
 from core.log import get_logger
 
+from fastapi import Depends
+from .auth import RequireAuth
+
 log = get_logger("web.api.digpool")
 
 router = APIRouter(prefix="/api/digpool", tags=["digpool"])
@@ -75,7 +78,7 @@ class DigPoolIngestCertRequest(BaseModel):
 
 
 @router.post("/chat")
-async def digpool_chat(req: DigPoolChatRequest):
+async def digpool_chat(req: DigPoolChatRequest, _auth: bool = Depends(RequireAuth("digpool.run"))):
     """对话式 SSE 入口（M0 占位：回显 + 空跑）。"""
     session = DigPoolSession(session_id=req.session_id, target=req.target, scope=req.scope)
 
@@ -91,7 +94,7 @@ async def digpool_chat(req: DigPoolChatRequest):
 
 
 @router.post("/session/empty")
-async def digpool_empty(req: DigPoolEmptyRequest):
+async def digpool_empty(req: DigPoolEmptyRequest, _auth: bool = Depends(RequireAuth("digpool.run"))):
     """M0 自检：复用玄鉴引擎做一次空跑，返回 boundary_intact 与 core_linked。"""
     session = DigPoolSession(target=req.target, scope=req.scope)
     result = await session.run_empty()
@@ -105,7 +108,7 @@ async def digpool_empty(req: DigPoolEmptyRequest):
 
 
 @router.post("/ingest")
-async def digpool_ingest(req: TrafficCorpusRequest):
+async def digpool_ingest(req: TrafficCorpusRequest, _auth: bool = Depends(RequireAuth("digpool.run"))):
     """M2 入口：摄入流量语料，运行时扩界（受 authorized 白名单约束）。"""
     corpus = TrafficCorpus(
         source=req.source,
@@ -124,7 +127,7 @@ async def digpool_ingest(req: TrafficCorpusRequest):
 
 
 @router.post("/run")
-async def digpool_run(req: DigPoolRunRequest):
+async def digpool_run(req: DigPoolRunRequest, _auth: bool = Depends(RequireAuth("digpool.run"))):
     """M3/M4 入口：真正钩入 LOOP 引擎（默认接真实 Agent），SSE 推流 depth_chain / termination。"""
     session = DigPoolSession(session_id=req.session_id, target=req.target, scope=req.scope)
 
@@ -140,7 +143,7 @@ async def digpool_run(req: DigPoolRunRequest):
 
 
 @router.post("/ingest/proxy")
-async def digpool_ingest_proxy(req: DigPoolIngestProxyRequest):
+async def digpool_ingest_proxy(req: DigPoolIngestProxyRequest, _auth: bool = Depends(RequireAuth("digpool.run"))):
     """M2b 入口：代理抓包 → 流量语料 → 运行时扩界（受 authorized 白名单约束）。"""
     session = DigPoolSession(session_id=req.session_id, target=req.target, scope=req.scope)
     if req.dump_path:
@@ -156,7 +159,7 @@ async def digpool_ingest_proxy(req: DigPoolIngestProxyRequest):
 
 
 @router.post("/ingest/cert")
-async def digpool_ingest_cert(req: DigPoolIngestCertRequest):
+async def digpool_ingest_cert(req: DigPoolIngestCertRequest, _auth: bool = Depends(RequireAuth("digpool.run"))):
     """M2b 入口：合规证书抓包 → 提取 SAN/CN 域名 → 运行时扩界（受 authorized 白名单约束）。"""
     session = DigPoolSession(session_id=req.session_id, target=req.target, scope=req.scope)
     if req.cert_text:

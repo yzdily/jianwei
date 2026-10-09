@@ -29,7 +29,7 @@ from core.ai_sec.report import (
 )
 from core.fast_scanner import FastScanner, ScanTarget
 from core.log import get_logger
-from .deps import require_api_key as _require_auth
+from .auth import RequireAuth, require_auth
 from .report_store import store
 
 log = get_logger("web.api.ai_sec")
@@ -110,7 +110,7 @@ def _to_finding(d: FindingInput) -> AIRiskFinding:
 # 端点
 # ----------------------------------------------------------------------------
 @router.post("/report/scan")
-async def report_scan(req: ReportScanRequest, _auth: bool = Depends(_require_auth)):
+async def report_scan(req: ReportScanRequest, _auth: bool = Depends(RequireAuth("scan.run"))):
     """对目标执行双轴扫描，并直接生成 OWASP LLM Top 10 报告（markdown + SARIF）。"""
     target = ScanTarget(
         url=req.url,
@@ -151,7 +151,7 @@ async def report_scan(req: ReportScanRequest, _auth: bool = Depends(_require_aut
 
 
 @router.post("/report/from-findings")
-async def report_from_findings(req: ReportFromFindingsRequest, _auth: bool = Depends(_require_auth)):
+async def report_from_findings(req: ReportFromFindingsRequest, _auth: bool = Depends(RequireAuth("scan.run"))):
     """用调用方已有的 findings 列表生成 OWASP LLM Top 10 报告（解耦复用）。
 
     适用于：已通过 skill 供应链扫描 / 外部红队 / 历史结果得到 findings，
@@ -186,7 +186,7 @@ async def report_from_findings(req: ReportFromFindingsRequest, _auth: bool = Dep
 
 
 @router.get("/report/{scan_id}")
-async def get_report(scan_id: str, _auth: bool = Depends(_require_auth)):
+async def get_report(scan_id: str, _auth: bool = Depends(RequireAuth("report.read"))):
     """取已生成报告的 markdown。"""
     data = store.get(scan_id)
     if not data:
@@ -195,7 +195,7 @@ async def get_report(scan_id: str, _auth: bool = Depends(_require_auth)):
 
 
 @router.get("/report/{scan_id}/sarif")
-async def get_report_sarif(scan_id: str, _auth: bool = Depends(_require_auth)):
+async def get_report_sarif(scan_id: str, _auth: bool = Depends(RequireAuth("report.read"))):
     """取报告的 SARIF 2.1.0 导出（接入 DevSecOps / CI 门禁）。"""
     data = store.get(scan_id)
     if not data:
@@ -204,7 +204,7 @@ async def get_report_sarif(scan_id: str, _auth: bool = Depends(_require_auth)):
 
 
 @router.post("/metrics/summary")
-async def metrics_summary(records: list[MetricRecordInput], _auth: bool = Depends(_require_auth)):
+async def metrics_summary(records: list[MetricRecordInput], _auth: bool = Depends(RequireAuth("scan.run"))):
     """聚合多次扫描/红队结果，返回 L4 度量汇总（ASR/拒答率/泄露率/护栏拦截率）。"""
     if not records:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "records must not be empty")
@@ -228,7 +228,7 @@ _GOLDEN = os.path.join(
 
 
 @router.get("/benchmark/summary")
-async def benchmark_summary(_auth: bool = Depends(_require_auth)):
+async def benchmark_summary(_auth: bool = Depends(RequireAuth("report.read"))):
     """返回 Golden 基线评测摘要（tests/golden/llmvault_benchmark.jsonl 回放）。
 
     注：这是基线口径（验证「规则→探针→judge→命中」管线自洽），

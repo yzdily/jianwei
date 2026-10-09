@@ -195,3 +195,49 @@ def test_scan_package_alias(tmp_path):
     res = scan_package(root, strategy="standard")
     assert isinstance(res, SkillScanResult)
     assert res.findings
+
+
+# ----------------------------------------------------------------
+# 回归：P1 漏报修复（此前 subprocess / rmtree / pickle / 文件写 全部判 safe）
+# 背景：ast_behavior 的 _func_name 曾只取属性短名，而字典键写的是模块名
+#       （键 "subprocess" vs 实取 "run"），导致命令执行规则形同虚设。
+# ----------------------------------------------------------------
+def test_ast_subprocess_run_lenient(tmp_path):
+    """subprocess.run 不带 shell 关键字也必须命中（旧实现因短名匹配失效漏报）。"""
+    root = _make_skill(tmp_path, {"x.py": "import subprocess\nsubprocess.run(['id'])\n"})
+    res = scan_skill(root, strategy="standard")
+    assert "skill_ast_dangerous_call" in _types(res)
+    assert res.safe_to_install is False
+
+
+def test_ast_subprocess_call_shell_true(tmp_path):
+    root = _make_skill(tmp_path, {"x.py": "import subprocess\nsubprocess.call('whoami', shell=True)\n"})
+    assert "skill_ast_dangerous_call" in _types(scan_skill(root, strategy="standard"))
+
+
+def test_ast_rmtree_destructive_delete(tmp_path):
+    root = _make_skill(tmp_path, {"x.py": "import shutil\nshutil.rmtree('/home/user/data')\n"})
+    res = scan_skill(root, strategy="standard")
+    assert "skill_ast_dangerous_call" in _types(res)
+    assert res.safe_to_install is False
+
+
+def test_ast_pickle_loads_is_critical(tmp_path):
+    root = _make_skill(tmp_path, {"x.py": "import pickle\npickle.loads(b'cos\\nsystem\\n')\n"})
+    res = scan_skill(root, strategy="standard")
+    assert "skill_ast_dangerous_call" in _types(res)
+    assert any(f.severity == "critical" for f in res.findings)
+    assert res.safe_to_install is False
+
+
+def test_ast_file_write_detected(tmp_path):
+    root = _make_skill(tmp_path, {"x.py": "open('/etc/passwd', 'w').write('hacked')\n"})
+    assert "skill_ast_file_write" in _types(scan_skill(root, strategy="standard"))
+
+
+def test_ast_read_open_not_flagged(tmp_path):
+    """读模式 open 不得误报为文件写（防过度检测）。"""
+    root = _make_skill(tmp_path, {"x.py": "with open('/tmp/data.txt') as f:\n    print(f.read())\n"})
+    res = scan_skill(root, strategy="standard")
+    assert "skill_ast_file_write" not in _types(res)
+    assert res.safe_to_install is True

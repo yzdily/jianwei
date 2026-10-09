@@ -29,7 +29,7 @@ from pydantic import BaseModel, Field
 
 from core.log import get_logger
 
-from .deps import require_api_key
+from .auth import RequireAuth
 
 log = get_logger("web.api.rbac")
 
@@ -150,7 +150,7 @@ async def list_users():
 
 
 @router.post("/users", status_code=status.HTTP_201_CREATED)
-async def create_user(payload: UserIn, _auth: bool = Depends(require_api_key)):
+async def create_user(payload: UserIn, _auth: bool = Depends(RequireAuth("rbac.manage"))):
     """新建子账号。组/角色 id 必须已存在，避免指向悬空主体。"""
     for gid in payload.groups:
         if gid not in _GROUPS:
@@ -173,7 +173,7 @@ async def create_user(payload: UserIn, _auth: bool = Depends(require_api_key)):
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(user_id: str, _auth: bool = Depends(require_api_key)):
+async def delete_user(user_id: str, _auth: bool = Depends(RequireAuth("rbac.manage"))):
     """删除子账号（内置 admin 账号受保护，防止把自己锁死）。"""
     if user_id == "user-admin":
         raise HTTPException(status.HTTP_409_CONFLICT, "内置账号不可删除")
@@ -188,7 +188,7 @@ async def list_groups():
 
 
 @router.post("/groups", status_code=status.HTTP_201_CREATED)
-async def create_group(payload: GroupIn, _auth: bool = Depends(require_api_key)):
+async def create_group(payload: GroupIn, _auth: bool = Depends(RequireAuth("rbac.manage"))):
     for rid in payload.roles:
         if rid not in _ROLES:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"角色不存在：{rid}")
@@ -204,7 +204,7 @@ async def create_group(payload: GroupIn, _auth: bool = Depends(require_api_key))
 
 
 @router.delete("/groups/{group_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_group(group_id: str, _auth: bool = Depends(require_api_key)):
+async def delete_group(group_id: str, _auth: bool = Depends(RequireAuth("rbac.manage"))):
     """删除用户组；若仍有成员引用则拒绝（保持引用完整性）。"""
     members = [u["id"] for u in _USERS.values() if group_id in u.get("groups", [])]
     if members:
@@ -223,7 +223,7 @@ async def list_roles():
 
 
 @router.post("/roles", status_code=status.HTTP_201_CREATED)
-async def create_role(payload: RoleIn, _auth: bool = Depends(require_api_key)):
+async def create_role(payload: RoleIn, _auth: bool = Depends(RequireAuth("rbac.manage"))):
     _check_perm_ids(payload.permissions)
     role_id = f"role-{uuid.uuid4().hex[:8]}"
     _ROLES[role_id] = {
@@ -236,7 +236,7 @@ async def create_role(payload: RoleIn, _auth: bool = Depends(require_api_key)):
 
 
 @router.delete("/roles/{role_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_role(role_id: str, _auth: bool = Depends(require_api_key)):
+async def delete_role(role_id: str, _auth: bool = Depends(RequireAuth("rbac.manage"))):
     """删除角色；被用户组引用时拒绝，避免组权限静默失效。"""
     holders = [g["id"] for g in _GROUPS.values() if role_id in g.get("roles", [])]
     if holders:

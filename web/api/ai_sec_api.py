@@ -17,7 +17,7 @@ import os
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
@@ -29,6 +29,7 @@ from core.ai_sec.report import (
 )
 from core.fast_scanner import FastScanner, ScanTarget
 from core.log import get_logger
+from .deps import require_api_key as _require_auth
 from .report_store import store
 
 log = get_logger("web.api.ai_sec")
@@ -83,25 +84,9 @@ class MetricRecordInput(BaseModel):
 
 
 # ----------------------------------------------------------------------------
-# 鉴权依赖（与 skill_scan_api 保持一致）
+# 鉴权依赖：统一由 web/api/deps.py 提供
+# （此前本模块与 skill_scan_api 各持一份，且后者是空壳 —— 同一平台两套鉴权，已收敛）
 # ----------------------------------------------------------------------------
-def _require_auth(x_api_key: str | None = Header(default=None, alias="X-API-Key")) -> bool:
-    """会话/API 鉴权依赖（设计 §4.2）。
-
-    - 未设 `JIANWEI_API_KEY` 环境变量：默认开放（便于本地开发），放行所有请求。
-    - 已设 `JIANWEI_API_KEY`：调用方必须在 Header 携带 `X-API-Key: <key>`，
-      且值与环境变量完全一致，否则拒绝（返回 401）。
-    """
-    expected = os.getenv("JIANWEI_API_KEY")
-    if not expected:
-        return True  # 开发模式：未启用鉴权
-    if x_api_key and x_api_key == expected:
-        return True
-    log.warning("ai_sec_api auth rejected: missing/invalid X-API-Key")
-    raise HTTPException(
-        status.HTTP_401_UNAUTHORIZED,
-        "Missing or invalid X-API-Key header",
-    )
 
 
 def _to_finding(d: FindingInput) -> AIRiskFinding:

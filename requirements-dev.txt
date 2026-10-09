@@ -11,3 +11,7 @@ uvicorn>=0.23.0
 sse-starlette>=1.6.0
 python-multipart>=0.0.9
 pydantic>=2.0.0
+
+# UI E2E（tests/e2e/）：驱动本机 Chrome/Edge 免下载浏览器；
+# 若本机无 Chrome/Edge，再执行 `playwright install chromium`。
+playwright>=1.40

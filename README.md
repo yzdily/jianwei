@@ -124,8 +124,9 @@ pip install -r requirements-min.txt
 # 3. 配置 LLM
 cp .env.example .env
 
-# 4. 启动
-python start.py
+# 4. 启动（零密钥即可跑通控制台）
+python start.py            # 打印模块清单与平台状态
+python start.py --serve    # 启动 Web API + 统一控制台 → http://127.0.0.1:8000/
 ```
 
 ## 快速使用
@@ -138,19 +139,62 @@ python -m core.cli scan-skill ./my-skill/ --strategy standard
 # 双轴扫描目标（Web / API / LLM 应用 / Agent / RAG）
 python -m core.cli scan https://llm.example.com/v1/chat --target-type llm_app --strategy standard
 
-# 启动 Web API（上传技能包 / 发起扫描 / digpool 对话 / 导出 SARIF）
-uvicorn web.api:app --reload
+# 启动 Web API + 统一控制台（--host / --port / --reload 可选）
+python start.py --serve --port 8000
+# 等价于：uvicorn web.api:app --reload
+```
+
+### 统一控制台（web/static）
+
+单页控制台，原生 JS 零依赖、无外部 CDN（内网/离线可用）：
+
+| 编号 | 视图 | 后端端点 |
+|------|------|----------|
+| 01 | 双轴扫描 | `POST /api/scan/target` |
+| 02 | 上传 Skill | `POST /api/scan/skill/upload` + `GET /api/scan/skill/{id}` + `/sarif` |
+| 03 | 智能体工作台 | `POST /api/digpool/run`（SSE 事件流）+ `/session/empty` |
+| 04 | 报告中心 | `POST /api/ai-sec/report/scan` + `GET .../report/{id}` + `/sarif` |
+| 05 | 基准评测 | `GET /api/ai-sec/benchmark/summary` |
+| 06 | L4 度量台 | `POST /api/ai-sec/metrics/summary` |
+| 07 | 系统健康 | `GET /health` + `GET /openapi.json` |
+| 08 | 系统设置 | `GET /api/platform/info`（脱敏运行态） |
+
+前端结构（每个文件保持小而聚焦，便于评审）：
+
+```
+web/static/
+├── index.html            # 外壳：侧栏 / 顶栏 / 用户卡 / 弹窗挂载点
+├── css/{tokens,shell,components}.css
+└── js/
+    ├── api.js            # fetch 封装 + SSE-over-fetch 读取器
+    ├── ui.js             # DOM 助手 / Toast / 弹窗 / Markdown / 发现项表格
+    ├── views/*.js        # 每个视图一个模块，向 JW.viewList 注册
+    └── app.js            # 哈希路由 + 导航渲染 + 用户菜单
+```
+
+其余端点（命令行/CI 用）：
+
+```
 #  → POST /api/scan/skill/upload  (multipart: file + strategy)
 #  → POST /api/scan/target         (JSON: url + target_type + strategy)
 #  → POST /api/digpool/chat        (SSE 对话式挖洞终端)
 #  → GET  /api/scan/skill/{scan_id}/sarif
 ```
 
-运行测试（含标注靶场基准）：
+运行测试：
 
 ```bash
-pytest tests/ -q
+# 单元 / 接口 / 契约测试（默认路径，秒级）
+pytest                      # 等价 pytest -m "not e2e"
+
+# 浏览器端到端（Playwright，覆盖 上传 Skill / 双轴扫描 / 报告 / 健康 / 权限管理）
+pip install -r requirements-dev.txt
+pytest -m e2e               # 本机有 Chrome/Edge 则免下载；无则先 playwright install chromium
 ```
+
+> E2E 与单测**分属两次运行**：Playwright 同步 API 会在进程内占用事件循环，
+> 与 pytest-asyncio 的异步用例同进程会互相干扰，故 `pytest.ini` 默认用
+> `addopts = -m "not e2e"` 排除，CI 也建议作为独立步骤。
 
 ## MVP 工作台（AI 挖洞闭环）
 

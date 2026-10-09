@@ -1,0 +1,161 @@
+/* ============================================================
+   鉴微统一控制台 · 设计 token
+   与 818/五视角技术方案_demo_2026-10-09.html 同源，作为唯一设计事实源。
+   注意：不引入外部 CDN 字体——安全产品需内网/离线可用，字体走系统栈。
+   ============================================================ */
+:root {
+  /* 背景层次（越靠前越深，用于表达层级而非装饰） */
+  --bg: #0a0d14;
+  --bg-2: #0e121b;
+  --bg-3: #131926;
+
+  /* 分隔线 */
+  --line: #1d2634;
+  --line-strong: #2a3547;
+
+  /* 文本三级（保证 AA 对比度） */
+  --ink: #e7ecf4;
+  --ink-2: #aab4c4;
+  --ink-3: #6f7c8f;
+
+  /* 主色 */
+  --accent: #4da3ff;
+  --accent-strong: #7cbfff;
+  --accent-ink: #06121f;
+  --accent-soft: rgba(77, 163, 255, 0.12);
+
+  /* 语义色（严重度/状态共用） */
+  --ok: #55b98c;
+  --warn: #dfa24b;
+  --bad: #e2685c;
+  --info: #6e8bb8;
+  --critical: #e2685c;
+
+  /* 圆角 */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+
+  /* 间距刻度 */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+
+  /* 字体：Outfit/JetBrains Mono 若本机已装则生效，否则系统栈兜底 */
+  --font-sans: "Outfit", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei",
+    system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono",
+    monospace;
+
+  /* 布局常量 */
+  --sidebar-w: 240px;
+  --topbar-h: 56px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+h2 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+h4 {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+
+p {
+  margin: 0 0 var(--s-3);
+}
+
+a {
+  color: var(--accent-strong);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+}
+button {
+  cursor: pointer;
+}
+
+code,
+kbd {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* 键盘可达性：只对键盘焦点显示轮廓，鼠标点击不显示 */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 屏幕阅读器专用文本 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 尊重系统「减少动态效果」偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

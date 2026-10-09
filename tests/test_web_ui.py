@@ -12,7 +12,17 @@ def test_index_served():
     r = client.get("/")
     assert r.status_code == 200
     assert "鉴微" in r.text
-    assert "扫描发起" in r.text  # 侧栏导航存在
+    # 导航标签改由各视图模块渲染（单一事实源），外壳只提供挂载点
+    assert "/static/js/app.js" in r.text
+    assert 'id="side-nav"' in r.text
+
+
+def test_nav_label_lives_in_view_module():
+    """「扫描发起 / 双轴扫描」语义存在于 01 视图模块（导航的事实源）。"""
+    r = client.get("/static/js/views/scan.js")
+    assert r.status_code == 200
+    assert "双轴扫描" in r.text
+    assert "扫描发起" in r.text
 
 
 def test_static_index_reachable():

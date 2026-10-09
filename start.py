@@ -25,9 +25,48 @@ def check_deps():
         except ImportError:
             print(f"[MISS] {dep} (pip install {dep})")
 
+def serve(argv):
+    """一键启动 Web API + 统一控制台（零密钥可跑，便于本地验收）。
+
+    README 原来要求手敲 `uvicorn web.api:app --reload`，这里收口成一条命令，
+    降低「第一次把它跑起来」的门槛。
+
+    Args:
+        argv: `--serve` 之后的参数，支持 --host / --port / --reload。
+    """
+    host, port, reload = "127.0.0.1", 8000, False
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--host" and i + 1 < len(argv):
+            host, i = argv[i + 1], i + 2
+        elif argv[i] == "--port" and i + 1 < len(argv):
+            port, i = int(argv[i + 1]), i + 2
+        elif argv[i] == "--reload":
+            reload, i = True, i + 1
+        else:
+            print(f"[WARN] 忽略未知参数：{argv[i]}")
+            i += 1
+
+    try:
+        import uvicorn
+    except ImportError:
+        print("[MISS] uvicorn —— 请先 pip install uvicorn")
+        sys.exit(1)
+
+    print(BANNER)
+    print(f"  统一控制台：  http://{host}:{port}/")
+    print(f"  OpenAPI 文档：http://{host}:{port}/docs")
+    print(f"  运行态信息：  http://{host}:{port}/api/platform/info")
+    print("=" * 60)
+    uvicorn.run("web.api:app", host=host, port=port, reload=reload)
+
+
 def main():
     # 带子命令参数时转发到 CLI（如：python start.py scan-skill ./skill/）
     if len(sys.argv) > 1:
+        if sys.argv[1] in ("--serve", "-s", "serve"):
+            serve(sys.argv[2:])
+            return
         from core.cli import main as cli_main
         sys.exit(cli_main(sys.argv[1:]))
 
@@ -46,7 +85,8 @@ def main():
     print("    - skills_my/redteam/  (红队 Prompt 注入测试集)")
     print("    - rules/llm_vuln.yaml  (LLM 攻击规则集)")
     print()
-    print("  Web API: 已就绪（/api/scan, /api/scan/skill, /api/ai-sec）")
+    print("  Web 控制台: python start.py --serve  → http://127.0.0.1:8000/")
+    print("              统一控制台：双轴扫描 / 上传 Skill / 智能体工作台 / 报告 / 度量 / 健康")
     print("  TODO: 完整靶场集成 + 多轮/工具滥用样本扩充")
     print("=" * 60)
 

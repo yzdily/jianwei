@@ -6,7 +6,8 @@
   二进制预筛（仅特征标记，绝不执行）。
 - 落临时沙箱 → 复用 scan_skill 跑同一引擎 → 扫完即焚。
 
-FastAPI 路由（web/api/skill_upload.py）在上层薄封装本模块，便于挂载。
+FastAPI 路由（web/api/skill_scan_api.py，**唯一实现**）在上层薄封装本模块；
+历史上 web/api/skill_upload.py 曾是另一套并行实现，已于 2026-10-09 收敛为兼容壳。
 """
 from __future__ import annotations
 

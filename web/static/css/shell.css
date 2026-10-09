@@ -1,0 +1,334 @@
+/* ============================================================
+   控制台骨架：侧栏 / 顶栏 / 内容区 / 用户卡（右上）
+   ============================================================ */
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  height: 100%;
+}
+
+/* ---------------- 侧栏 ---------------- */
+.side {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  background: var(--bg-2);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: var(--s-5) 14px var(--s-4);
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 0 var(--s-2) 18px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 14px;
+}
+.brand .mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--accent), #7f5cff);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  flex: none;
+}
+.brand b {
+  font-size: 15px;
+  display: block;
+  line-height: 1.2;
+}
+.brand small {
+  font-size: 10px;
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+}
+.group-tt {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--ink-3);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: var(--s-2) var(--s-2) var(--s-1);
+}
+.nav button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  white-space: nowrap; /* 副标过长时不允许把主标签挤换行 */
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-2);
+  padding: 11px var(--s-3);
+  font-size: 13px;
+  transition: background 0.15s, color 0.15s;
+}
+.nav button:last-child {
+  border-bottom: 0;
+}
+.nav button:hover {
+  background: var(--bg-3);
+  color: var(--ink);
+}
+.nav button.active {
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+/* 激活态左侧指示条：绝对定位，不占位、不引起重排 */
+.nav button.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+}
+.nav .num {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-3);
+  width: 20px;
+  flex: none;
+}
+.nav button.active .num {
+  color: var(--accent-strong);
+}
+.nav button .k {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-3);
+  margin-left: auto;
+  padding-left: var(--s-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side .spacer {
+  flex: 1;
+  min-height: var(--s-5);
+}
+.side .side-note {
+  font-size: 11px;
+  color: var(--ink-3);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-md);
+  padding: 10px var(--s-3);
+  line-height: 1.6;
+}
+
+/* ---------------- 主区 + 顶栏 ---------------- */
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 var(--s-5);
+  height: var(--topbar-h);
+  flex: none;
+  background: rgba(10, 13, 20, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.crumb {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.crumb b {
+  color: var(--accent-strong);
+  font-weight: 500;
+}
+.topbar .right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pill-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border: 1px solid var(--line-strong);
+  padding: 3px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.6px;
+}
+
+.content {
+  flex: 1;
+  padding: var(--s-5);
+  overflow: auto;
+}
+.view {
+  max-width: 1180px;
+}
+.view[hidden] {
+  display: none;
+}
+
+/* ---------------- 用户卡（右上）+ 下拉菜单 ---------------- */
+.user-wrap {
+  position: relative;
+}
+.user-card {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 5px 10px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.user-card:hover,
+.user-card.open {
+  border-color: var(--accent);
+  background: var(--bg-3);
+}
+.user-card .avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #7f5cff);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.user-card .uc-b {
+  text-align: left;
+}
+.user-card b {
+  display: block;
+  font-size: 12.5px;
+  line-height: 1.3;
+}
+.user-card small {
+  display: block;
+  font-size: 9.5px;
+  color: var(--ink-3);
+}
+.user-card .uc-arrow {
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  transition: transform 0.2s;
+}
+.user-card.open .uc-arrow {
+  transform: rotate(180deg);
+}
+.user-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 70;
+  width: 200px;
+  background: var(--bg-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  box-shadow: 0 18px 40px -14px rgba(0, 0, 0, 0.75);
+  overflow: hidden;
+  display: none;
+}
+.user-menu.open {
+  display: block;
+}
+.user-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-2);
+  padding: 10px 14px;
+  font-size: 12.5px;
+}
+.user-menu button:last-child {
+  border-bottom: 0;
+}
+.user-menu button:hover {
+  background: var(--bg-3);
+  color: var(--ink);
+}
+.user-menu button.danger {
+  color: var(--bad);
+}
+.user-menu .um-num {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--ink-3);
+  width: 14px;
+  flex: none;
+}
+
+/* ---------------- 响应式：窄屏侧栏收窄 ---------------- */
+@media (max-width: 900px) {
+  .app {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .side {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--s-2);
+    padding: var(--s-3);
+  }
+  .brand {
+    border: 0;
+    margin: 0;
+    padding: 0;
+  }
+  .nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .nav button {
+    width: auto;
+    border-bottom: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+  }
+  .side .spacer,
+  .side .side-note,
+  .group-tt {
+    display: none;
+  }
+  .content {
+    padding: var(--s-4);
+  }
+}
